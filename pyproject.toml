@@ -1,0 +1,10 @@
+[project]
+name = "ostatok"
+version = "0.1.0rc1"
+description = "Складские остатки и атомарные временные резервы на PostgreSQL"
+requires-python = ">=3.12"
+license = "MIT"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

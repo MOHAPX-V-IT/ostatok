@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Остаток — складские резервы</title>
+    <link rel="stylesheet" href="/console/styles.css" />
+    <script type="module" src="/console/stockroom.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#workspace">К остаткам</a>
+    <div class="shell">
+      <header class="masthead">
+        <a class="wordmark" href="/" aria-label="Остаток — главная"
+          ><svg aria-hidden="true" viewBox="0 0 32 32" fill="none">
+            <path
+              d="M3 7h26M3 16h26M3 25h26"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path d="M21 4v24" stroke="#b75c3c" stroke-width="5" /></svg
+          >остаток</a
+        >
+        <nav aria-label="Материалы">
+          <span class="optional eyebrow">Учёт по делу</span
+          ><a href="/docs" target="_blank" rel="noopener">API ↗</a
+          ><span class="badge">RC 1</span>
+        </nav>
+      </header>
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Склад / резерв / отгрузка</div>
+          <h1>Есть в наличии.<br />Есть под заказ.</h1>
+          <p>
+            Примите товар, закрепите его за заказом и подтвердите отгрузку.
+            Каждый переход остаётся в журнале.
+          </p>
+        </div>
+        <div class="stock-symbol" aria-hidden="true"><i></i><i></i><i></i></div>
+      </section>
+      <form class="connection" id="connect">
+        <label for="api-key"
+          >Ключ рабочего места<input
+            id="api-key"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Ключ, полученный при запуске"
+            required /></label
+        ><button class="primary" type="submit">Подключиться</button
+        ><button type="button" id="disconnect" hidden>Отключиться</button>
+        <div class="session" id="identity">
+          Ключ хранится только в этой вкладке
+        </div>
+      </form>
+      <div
+        id="notice"
+        class="notice"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+      <main id="workspace">
+        <div class="metrics" aria-label="Сводка выборки">
+          <div class="metric">
+            <span>ПОЗИЦИЙ В ВЫБОРКЕ</span><strong id="position-count">—</strong>
+          </div>
+          <div class="metric">
+            <span>ДОСТУПНО В ВЫБОРКЕ</span
+            ><strong id="available-count">—</strong>
+          </div>
+          <div class="metric">
+            <span>В РЕЗЕРВЕ В ВЫБОРКЕ</span
+            ><strong id="reserved-count">—</strong>
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <div class="tabbar" role="tablist" aria-label="Складские журналы">
+              <button
+                id="balances-tab"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="balances-pane"
+                data-tab="balances"
+              >
+                01 Остатки</button
+              ><button
+                id="reservations-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="reservations-pane"
+                data-tab="reservations"
+              >
+                02 Резервы</button
+              ><button
+                id="movements-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="movements-pane"
+                data-tab="movements"
+              >
+                03 Движения
+              </button>
+            </div>
+            <section
+              id="balances-pane"
+              role="tabpanel"
+              aria-labelledby="balances-tab"
+            >
+              <div class="toolbar">
+                <h2>Складская ведомость</h2>
+                <button id="refresh" type="button" class="small">
+                  Обновить данные ↻
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Товар / склад</th>
+                      <th class="numeric">Доступно</th>
+                      <th class="numeric">В резерве</th>
+                      <th class="numeric">На складе</th>
+                    </tr>
+                  </thead>
+                  <tbody id="balances-body"></tbody>
+                </table>
+                <p id="balances-empty" class="empty">
+                  Подключитесь с ключом, чтобы увидеть остатки.
+                </p>
+              </div>
+            </section>
+            <section
+              id="reservations-pane"
+              role="tabpanel"
+              aria-labelledby="reservations-tab"
+              hidden
+            >
+              <div class="toolbar">
+                <h2>Резервы заказов</h2>
+                <select id="reservation-status" aria-label="Состояние резервов">
+                  <option value="">Все состояния</option>
+                  <option value="active">Активные</option>
+                  <option value="confirmed">Отгруженные</option>
+                  <option value="cancelled">Отменённые</option>
+                  <option value="expired">Истёкшие</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Заказ / состав</th>
+                      <th>Состояние</th>
+                      <th>До</th>
+                      <th>Действие</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reservations-body"></tbody>
+                </table>
+                <p id="reservations-empty" class="empty">
+                  Подключитесь с ключом, чтобы увидеть резервы.
+                </p>
+              </div>
+            </section>
+            <section
+              id="movements-pane"
+              role="tabpanel"
+              aria-labelledby="movements-tab"
+              hidden
+            >
+              <div class="toolbar">
+                <h2>История движения</h2>
+                <span class="muted small-text"
+                  >Последовательность операций</span
+                >
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Операция / основание</th>
+                      <th>Позиция</th>
+                      <th class="numeric">Доступно ±</th>
+                      <th class="numeric">Резерв ±</th>
+                    </tr>
+                  </thead>
+                  <tbody id="movements-body"></tbody>
+                </table>
+                <p id="movements-empty" class="empty">
+                  Подключитесь с ключом, чтобы увидеть движения.
+                </p>
+              </div>
+            </section>
+            <div class="pagination">
+              <span id="page-info">Данные не загружены</span>
+              <div class="buttons">
+                <button id="previous" type="button" class="small" disabled>
+                  ← Назад</button
+                ><button id="next" type="button" class="small" disabled>
+                  Далее →
+                </button>
+              </div>
+            </div>
+          </div>
+          <aside class="sidebar" aria-label="Складские операции">
+            <section class="panel">
+              <h2>Закрепить за заказом</h2>
+              <form id="reserve-form" class="stack">
+                <label
+                  >Номер заказа<input
+                    name="order_ref"
+                    required
+                    maxlength="120"
+                    placeholder="ЗАКАЗ-1042"
+                /></label>
+                <div id="reservation-lines"></div>
+                <button id="add-line" type="button" class="small">
+                  + Ещё позиция</button
+                ><label
+                  >Срок резерва, минут<input
+                    name="ttl"
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value="15"
+                    required /></label
+                ><button class="primary" type="submit" data-write disabled>
+                  Создать резерв →
+                </button>
+                <p class="muted small-text">
+                  При истечении срока товар вернётся в доступный остаток.
+                </p>
+              </form>
+            </section>
+            <section class="panel">
+              <h2>Принять товар</h2>
+              <form id="receipt-form" class="stack">
+                <label
+                  >Товар<select
+                    name="product_id"
+                    class="product-options"
+                    required
+                  ></select></label
+                ><label
+                  >Склад<select
+                    name="warehouse_id"
+                    class="warehouse-options"
+                    required
+                  ></select
+                ></label>
+                <div class="row">
+                  <label
+                    >Количество<input
+                      name="quantity"
+                      type="number"
+                      min="1"
+                      max="1000000000"
+                      value="10"
+                      required /></label
+                  ><label
+                    >Основание<input
+                      name="reference"
+                      required
+                      maxlength="120"
+                      placeholder="НАКЛАДНАЯ-01"
+                  /></label>
+                </div>
+                <button type="submit" data-write disabled>
+                  Записать приход
+                </button>
+              </form>
+            </section>
+            <section class="panel">
+              <h3>Справочники</h3>
+              <details>
+                <summary>Добавить товар</summary>
+                <form id="product-form" class="stack">
+                  <label
+                    >Артикул<input
+                      name="sku"
+                      required
+                      maxlength="80"
+                      placeholder="NOTE-A5" /></label
+                  ><label
+                    >Название<input
+                      name="name"
+                      required
+                      maxlength="200"
+                      placeholder="Блокнот A5" /></label
+                  ><button type="submit" data-write disabled>
+                    Добавить товар
+                  </button>
+                </form>
+              </details>
+              <details>
+                <summary>Добавить склад</summary>
+                <form id="warehouse-form" class="stack">
+                  <label
+                    >Код<input
+                      name="code"
+                      required
+                      maxlength="80"
+                      placeholder="MSK-01" /></label
+                  ><label
+                    >Название<input
+                      name="name"
+                      required
+                      maxlength="200"
+                      placeholder="Основной склад" /></label
+                  ><button type="submit" data-write disabled>
+                    Добавить склад
+                  </button>
+                </form>
+              </details>
+              <p class="key-help">
+                Роль ключа определяет доступные действия. Журнал сохраняется на
+                сервере.
+              </p>
+            </section>
+          </aside>
+        </div>
+      </main>
+      <footer class="footer">
+        <span>ОСТАТОК / Складские резервы</span
+        ><span>Время показано на этом устройстве · 0.1.0-rc.1</span>
+      </footer>
+    </div>
+  </body>
+</html>
